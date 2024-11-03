@@ -29,7 +29,7 @@ def DCSolve(G, Φ):
         while DT is None:
             term = NextDistinctTerm(pts, terms, cover, G['R']['V'])
             terms.add(term)
-            preds.update(enumerate_predicates(G['R']['C'], pts))
+            preds.update(enumerate_predicates(G['R']['V'], pts))
             print(f"Added predicate(s): {preds} | Current predicates set: {preds}")
             DT = LearnDT(terms, preds)
         
@@ -46,14 +46,28 @@ def DCSolve(G, Φ):
             pts.add(cexpt)  # Add the counterexample to `pts` for further refinement
 
 def NextDistinctTerm(pts, terms, cover, GT):
+    checked_terms = set()  # Keep track of terms we've already evaluated for uniqueness
+    term_gen = enumerate_terms(GT, pts)  # Create a generator for terms
     while True:
-        t = next(enumerate_terms(GT, pts))
-        cover[t] = {pt for pt in pts if satisfies(pt, t)}
-        
-        # Ensure `t` has unique coverage
-        if all(cover[t] != cover[other_t] for other_t in terms):
-            print(f"Next distinct term selected: {t} with coverage {cover[t]}")
-            return t
+        try:
+            t = next(term_gen)
+            if t in checked_terms:
+                continue  # Skip if we've already checked this term
+
+            cover[t] = {pt for pt in pts if satisfies(pt, t)}
+            print(f"Coverage for term '{t}': {cover[t]}")  # Debug print for coverage values
+            checked_terms.add(t)  # Mark term as checked
+
+            # Ensure `t` has unique coverage
+            if all(cover[t] != cover[other_t] for other_t in terms):
+                print(f"Next distinct term selected: {t} with coverage {cover[t]}")
+                return t
+
+        except StopIteration:
+            # If no unique term is found, it means we need a new counterexample to distinguish
+            print("Exhausted all terms with current coverage; resetting.")
+            term_gen = enumerate_terms(GT, pts)  # Reset term generator
+            checked_terms.clear()  # Clear checked terms to retry with new counterexamples
 
 def enumerate_terms(GT, pts):
     # GT: Terms in grammar, which are `x`, `y`, `0`, `1`, and combinations
@@ -70,19 +84,20 @@ def enumerate_terms(GT, pts):
     yield "y + x"
 
 def enumerate_predicates(GP, pts):
-    # GP: Predicates in the grammar, e.g., "x > y"
-    conditions = [f"{v1} > {v2}" for v1, v2 in product(GP, repeat=2)]
+    # Only generate valid comparisons between x and y
+    conditions = ["x > y", "y > x", "x == y"]
     for cond in conditions:
         if cond not in pts:
             print(f"Enumerating predicate: {cond}")
             yield cond
 
 def LearnDT(terms, preds):
-    # Simplified placeholder decision tree learning
-    # In a full implementation, you'd use predicates to split terms
-    if 'x > y' in preds:
-        print("Learning decision tree with predicate 'x > y'")
-        return ('x > y', 'x', 'y')  # Tree: if x > y return x else return y
+    # Updated to use any available predicates to build a decision tree if possible
+    if preds:
+        # Use first predicate to create a simple decision tree
+        pred = next(iter(preds))  # Grab an arbitrary predicate
+        print(f"Learning decision tree with predicate '{pred}'")
+        return (pred, 'x', 'y')  # Example tree: if pred then x else y
     print("No suitable decision tree learned.")
     return None
 
@@ -123,7 +138,7 @@ def satisfies(pt, term):
     
     try:
         # Evaluate the term as a condition or an expression
-        if '>' in term or '<' in term or '==' in term or '<=' in term:  # It's a condition
+        if '>' in term or '<' in term or '==' in term:  # It's a condition
             result = eval(term, {}, locals_dict)
             print(f"Evaluated condition '{term}' for (x={x}, y={y}): {result}")
             return result
