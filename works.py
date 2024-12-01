@@ -1,6 +1,3 @@
-import itertools
-
-
 class Synthesis:
     def __init__(self, grammar, spec):
         self.grammar = grammar
@@ -11,26 +8,23 @@ class Synthesis:
         self.cover = {}
 
     def bottom_up_enumerate_terms(self):
+        print("\nEnumerating terms...")
         new_terms = set()
-        print("\nEnumerating terms:")
         for t in self.grammar["terms"]:
-            new_terms.add(t)
-            self.cover[t] = set()
-        for t in new_terms:
+            if t not in self.cover:
+                self.cover[t] = set()
             for pt in self.points:
                 if self.verify_point(t, pt):
                     self.cover[t].add(pt)
             if self.cover[t]:
-                print(f"Term '{t}' covers points: {self.cover[t]}")
+                new_terms.add(t)
         self.terms.update(new_terms)
+        print(f"Terms after enumeration: {self.terms}")
 
     def bottom_up_enumerate_preds(self):
-        new_preds = set()
-        print("\nEnumerating predicates:")
-        for p in self.grammar["predicates"]:
-            new_preds.add(p)
-            print(f"Predicate '{p}' added.")
-        self.preds.update(new_preds)
+        print("\nEnumerating predicates...")
+        self.preds.update(self.grammar["predicates"])
+        print(f"Predicates: {self.preds}")
 
     def verify_point(self, expr, point):
         x, y, expected = point
@@ -44,13 +38,15 @@ class Synthesis:
         print("\nLearning decision tree...")
         if not self.preds or not self.terms:
             return None
-        # Simplified logic: Pick a predicate and branch on two terms
-        pred = next(iter(self.preds))
-        term1 = next(iter(self.terms))
-        term2 = next(iter(self.terms - {term1}), term1)
-        tree = {"root": pred, "branches": {True: term1, False: term2}}
-        print(f"Constructed tree: {tree}")
-        return tree
+        for pred in self.preds:
+            for term1 in self.terms:
+                for term2 in self.terms:
+                    tree = {"root": pred, "branches": {True: term1, False: term2}}
+                    print(f"Trying tree: {tree}")
+                    result, cex = self.verify(tree)
+                    if result:
+                        return tree
+        return None
 
     def evaluate_tree(self, tree, point):
         if isinstance(tree, str):  # Leaf node (a term)
@@ -60,7 +56,6 @@ class Synthesis:
         return self.evaluate_tree(branch, point)
 
     def verify(self, tree):
-        print("\nVerifying candidate solution...")
         for pt in self.points:
             x, y, expected = pt
             try:
@@ -78,9 +73,10 @@ class Synthesis:
         self.points.add(cex)
         print(f"\nAdded counterexample: {cex}")
 
-    def synthesize(self):
+    def synthesize(self, max_iterations=20, timeout=60):
         self.points.update([(x, y, expected) for x, y, expected in self.spec])
-        while True:
+        for iteration in range(1, max_iterations + 1):
+            print(f"\nIteration {iteration}/{max_iterations}")
             self.bottom_up_enumerate_terms()
             self.bottom_up_enumerate_preds()
             tree = self.decision_tree_learning()
@@ -91,6 +87,8 @@ class Synthesis:
                 print("\nFinal Decision Tree:")
                 return tree
             self.add_counterexample(cex)
+        print("\nSynthesis did not finish within the iteration limits.")
+        return None
 
 
 # Updated grammar and specification
@@ -104,4 +102,7 @@ spec = [(1, 0, 1), (0, 2, 2), (4, 2, 4), (2, 3, 3), (2, 2, 2), (3, 1, 3), (1, 1,
 # Initialize and run synthesis
 synth = Synthesis(grammar, spec)
 solution = synth.synthesize()
-print(solution)
+if solution:
+    print("\nSynthesis completed successfully with tree:", solution)
+else:
+    print("\nSynthesis failed.")
