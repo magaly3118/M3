@@ -93,7 +93,7 @@ class Synthesis:
 
 # Updated grammar and specification
 grammar = {
-    "terms": ["x", "y", "0", "1", "x + y", "y - x", "x - y", "y + x", "x * y", "y * x", "max(x, y)", "min(x, y)"],
+    "terms": ["x", "y", "0", "1", "x + y", "y - x", "x - y", "y + x", "x * y", "y * x", "min(x, y)"],
     "predicates": ["x <= y", "y <= x", "x == y", "x != y"]
 }
 
