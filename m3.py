@@ -139,6 +139,7 @@ class M3:
         implemented and raises a `NotImplementedError`.
         :type expr: str
         """
+        return
         raise NotImplementedError("_expr_to_func_callable()")
     
     def _expr_to_func_str(self, expr:str) -> str:
@@ -308,6 +309,8 @@ class M3:
 
 # Testing with example from EUSolver paper
 if __name__ == "__main__":
+    # Max
+    print("\nMax Test")
     def spec_condition(output, x, y):
         return output >= x and output >= y and (output == x or output == y)
     spec = Specification(spec_condition)
@@ -317,11 +320,33 @@ if __name__ == "__main__":
     grammar = Grammar(terms, conditions)
 
     m3 = M3(grammar, spec, "my_max", verbose=True)
+    m3.synthesize(max_synth_iter=50)
+    test = input()
 
-    try:
-        m3.synthesize(max_synth_iter=5)
-        test_pts = m3._generate_test_pts(2)
-        """for i in range(10):
-            print(next(test_pts))"""
-    except NotImplementedError as e:
-        print(f"\nNOTE: finish implementing {e.args[0]}")
+    # Min
+    print("\nMin Test")
+    def spec_condition(output, x, y):
+        return output <= x and output <= y and (output == x or output == y)
+    spec = Specification(spec_condition)
+
+    terms = ["0", "1", "x", "y", "T + T"]
+    conditions = ["T <= T", "C and C", "not C"]
+    grammar = Grammar(terms, conditions)
+
+    m3 = M3(grammar, spec, "my_min", verbose=True)
+    m3.synthesize(max_synth_iter=50)
+    test = input()
+
+
+    # Abs
+    print("\nAbs Test")
+    def spec_condition(output, x):
+        return (x >= 0 and output == x) or (x < 0 and output == -x)
+    spec = Specification(spec_condition)
+
+    terms = ["0", "1", "x", "T + T", "-T"]
+    conditions = ["T <= T", "C and C", "not C"]
+    grammar = Grammar(terms, conditions)
+
+    m3 = M3(grammar, spec, "my_abs", verbose=True)
+    m3.synthesize(max_synth_iter=50, max_verify_checks=100)
