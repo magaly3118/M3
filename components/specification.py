@@ -21,13 +21,13 @@ class Specification:
         Returns:
             bool: True if the spefication's condition is met, False otherwise
         """
-        try:
-            output = synthesized_func(*inputs)
-            return self.condition(output, *inputs)
+        #try:
+        output = synthesized_func(*inputs)
+        return self.condition(output, *inputs)
         
-        except Exception as e:
-            print(f"Error evaluating program: {e}")
-            return False
+        """except Exception as e:
+            print(f"Error evaluating program, params:{inputs}, error:{e}")
+            return False"""
 
 # Example usage
 if __name__ == "__main__":

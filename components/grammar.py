@@ -1,48 +1,16 @@
 from itertools import product
 from typing import Generator, Callable, Union
-
-def predicate_sort_key(s:str) -> tuple[int, str, str]:
-    """"""
-    # extract letters and numbers
-    letters = "".join(filter(str.isalpha, s))
-    numbers = "".join(filter(str.isdigit, s))
-
-    # fill to right length
-    letters += (len(s) - len(letters)) * "z"
-    numbers += (len(s) - len(numbers)) * "9"
-
-    letters = [l if l.isalpha() else "z" for l in s]
-    numbers = [n if n.isdigit() else "9" for n in s]
-
-    return (len(s), letters, numbers)
+from .utils import predicate_sort_key
 
 class Grammar:
-    def __init__(self, start_rule:list[str], terms_rule:list[str], conditions_rule:list[str]):
-        """
-        Initialize the grammar with a set of production rules.
-
-        Arguments:
-            start_rule (list[str]): production rules for start symbol (S)
-            terms_rule (list[str]): production rules for terms (T)
-            conditions_rule (list[str]): production rules for conditions (C)
-        """
-        self.start_rule = start_rule
-        self.terms_rule = terms_rule
-        self.conditions_rule = conditions_rule
-
-    def rules(self):
-        """Reutrns a dictionary with all rules, where the key is the symbol and the value is a list of production rules"""
-        rules = {
-            "S": self.start_rule,
-            "T": self.terms_rule,
-            "C": self.conditions_rule
-        }
-
-        return rules
+    def __init__(self, terms:list[str], conditions:list[str]):
+        """Initialize a grammar with a set terms and conditions."""
+        self.terms = terms
+        self.conditions = conditions
 
     def identifiers(self, as_list:bool=False) -> Union[str, list[str]]:
-        """Returns a sorted list of identifiers from terms"""
-        identifiers = [term for term in self.terms_rule if term.isidentifier()]
+        """Returns a sorted list of identifiers from the grammar's terms"""
+        identifiers = [term for term in self.terms if term.isidentifier()]
         identifiers.sort()
 
         if as_list:
@@ -52,9 +20,9 @@ class Grammar:
     
     def non_recursive_terms(self) -> list[str]:
         """Returns a list of base terms (aka non-recursive)"""
-        return [term for term in self.terms_rule if term.isdigit() or term.isidentifier()]
+        return [term for term in self.terms if term.isdigit() or term.isidentifier()]
     
-    def make_str_from_parts_and_combination(self, parts:list[str], combination:tuple):
+    def _make_str_from_parts_and_combination(self, parts:list[str], combination:tuple):
         """Substitutes combination into string, which is passed in parts"""
         string = "".join(p + (c if i < len(combination) else "")
             for i, (p, c) in enumerate(zip(parts, combination + ("",))))
@@ -64,7 +32,7 @@ class Grammar:
         """Enumerates predicates using the given terms"""
         # get non-recursive predicates
         predicates = set()
-        nr_conditions = [condition for condition in self.conditions_rule if "C" not in condition]
+        nr_conditions = [condition for condition in self.conditions if "C" not in condition]
         for condition in nr_conditions:
             parts = condition.split("T")
             for combination in product(terms, repeat=len(parts) - 1):
@@ -72,11 +40,11 @@ class Grammar:
                 if any(combination[i] == combination[i + 1] for i in range(len(combination) - 1)):
                     continue
 
-                pred = self.make_str_from_parts_and_combination(parts, combination)
+                pred = self._make_str_from_parts_and_combination(parts, combination)
                 predicates.add(pred)
 
         # get recursive predicates
-        recursive_conditions = [condition for condition in self.conditions_rule if "C" in condition]
+        recursive_conditions = [condition for condition in self.conditions if "C" in condition]
         for condition in recursive_conditions:
             parts = condition.split("C")
             for combination in product(predicates, repeat=len(parts) - 1):
@@ -85,12 +53,12 @@ class Grammar:
                     continue
 
                 # substitute the combinations into the rule to form a new predicate
-                pred_with_c = self.make_str_from_parts_and_combination(parts, combination)
+                pred_with_c = self._make_str_from_parts_and_combination(parts, combination)
 
                 # check for terms and handle them
                 final_parts = pred_with_c.split("T")
                 for term_combination in product(terms, repeat=len(final_parts) - 1):
-                    final_pred = self.make_str_from_parts_and_combination(final_parts, term_combination)
+                    final_pred = self._make_str_from_parts_and_combination(final_parts, term_combination)
                     predicates.add(final_pred)
 
         predicates = list(predicates)
@@ -137,12 +105,12 @@ class Grammar:
 
         # yield recursive terms
         seen_terms = set(self.non_recursive_terms())
-        recursive_terms = [term for term in self.terms_rule if "T" in term] # like T+T
+        recursive_terms = [term for term in self.terms if "T" in term] # like T+T
         while True:
             for term in recursive_terms:
                 parts = term.split("T")
                 for combination in product(seen_terms, repeat=len(parts) - 1):
-                    expr = self.make_str_from_parts_and_combination(parts, combination)
+                    expr = self._make_str_from_parts_and_combination(parts, combination)
                     seen_terms.add(expr)
                     yield expr
         
@@ -182,7 +150,7 @@ if __name__ == "__main__":
     # testing code_to_func
     term_as_func = grammar.code_to_func("\nif x >= y: \n\treturn x \nelse: \n\treturn y")
     try:
-        from specification import Specification
+        from EECS700.EECS700_Project.components.specification import Specification
     except:
         from .specification import Specification
     def spec_condition(output, x, y):

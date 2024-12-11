@@ -9,7 +9,7 @@ class DTNode:
         
         return (self.depth + 1) * "\t"
 
-    def predict(self, pt:tuple):
+    def predict(self, pt:tuple, params:list[str]):
         raise NotImplementedError
     
     def fprint(self, offset:str):
